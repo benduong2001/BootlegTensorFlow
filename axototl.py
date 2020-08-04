@@ -877,11 +877,12 @@ class Conv_Categ_NN_Executor:
                 
                 for depth_layer_matrix in tensor.md:
                     temp_vector = depth_layer_matrix.vr[j]
-                    temp_vector_boxed = np.array([[x] for x in temp_vector.headc]).astype("float")
+                    temp_vector_boxed = np.array([[(127.5*x) + 127.5] for x in temp_vector.headc]).astype("float")
                     temp_impaled_vectors.append(temp_vector_boxed)
                 final_impaled_vector = np.hstack(tuple(temp_impaled_vectors))
                 filt_reshaper.append(final_impaled_vector)
             filt_reshaper_array = np.array(filt_reshaper).astype("uint8")
+            # print(filt_reshaper_array)
             filt_image = Image.fromarray(filt_reshaper_array)
             filt_image.save("axototl_filt_image ({0}).jpg".format(i))
         
