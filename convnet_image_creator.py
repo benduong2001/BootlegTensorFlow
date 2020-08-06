@@ -114,12 +114,11 @@ def create_stockphotos1(l1, l2, u1, u2):
 
 # In[8]:
 
+def proper_categories():
+    create_stockphotos0(3, 1.5, .4, .4)
+    create_stockphotos1(3, 1.5, .4, .4)
+def red_herrings():
+    create_stockphotos0(3, 3, 3, 3)
+    create_stockphotos1(3, 3, 3, 3)
 
-create_stockphotos0(3, 1.5, .4, .4)
-
-
-# In[11]:
-
-
-create_stockphotos1(3, 1.5, .4, .4)
-
+proper_categories()
