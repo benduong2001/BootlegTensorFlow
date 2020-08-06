@@ -1,4 +1,5 @@
 from matrixed_network_7_25_2020 import *
+
 from PIL import Image
 # import os
 # In[ ]:
@@ -81,6 +82,7 @@ class Conv_nn:
 
     def reconfigure_observation(self, input_, target):
         # updates the input and output
+
         self.all_layers[0].a0.pointer_preserved_change(input_)
         self.all_layers[-1].categ_nn.final_loss.freq_target.pointer_preserved_change(target)
 
@@ -281,18 +283,20 @@ class Conv_Layer (Cnn_Layer):
         self.stride = stride
         self.pad = pad
     
-    def filt_matrix(self, orig, filt):
+    def _filt_matrix(self, orig, filt, stride = None, pad = None):
         # orig and filt are matrix
         o_h = len(orig.vr) # height of orig
         f_h = len(filt.vr) # height of filter
         
         o_w = len(orig.vr[0].headc) # width of orig
         f_w = len(filt.vr[0].headc) # width of filter
-        stride = self.stride
-        pad = self.pad
+        if stride == None:
+            stride = self.stride
+        if pad == None:
+            pad = self.pad
         
-        output_h = ((o_h + (2 * pad)) - f_h)//stride + 1
-        output_w = ((o_w + (2 * pad)) - f_w)//stride + 1
+        output_h = (((o_h + (2 * pad)) - f_h)//stride) + 1
+        output_w = (((o_w + (2 * pad)) - f_w)//stride) + 1
         
         output_matrix = [[0 for _ in range(output_w)]
                          for _ in range(output_h)]
@@ -309,19 +313,24 @@ class Conv_Layer (Cnn_Layer):
                 weighted_sum = hadamarded.__sum__()
                 output_matrix[y][x] = weighted_sum
         return Matrix(output_matrix)
-    def forward_Fs(self, a0 = None, weight_tensors = None):
+    def forward_Fs(self, a0 = None, weight_tensors = None, stride = None, pad = None):
         if a0 == None:
             a0 = self.a0
         if weight_tensors == None:
             weight_tensors = self.Fs
+        
         F_tensor = []
         for weight_tensor in weight_tensors:
+
             assert a0.depth == weight_tensor.depth
             F_matrix = None # Final matrix, which is component-wise Added
             for i in range(weight_tensor.depth):
+
                 orig_matrix = a0.md[i]
                 weight_matrix = weight_tensor.md[i]
-                filt_layer_matrix = self.filt_matrix(orig_matrix, weight_matrix)
+                filt_layer_matrix = self._filt_matrix(orig_matrix, weight_matrix,
+                                                     stride = stride, pad = pad)
+                
                 if i == 0: # at the start, set the F_matrix to the first layer
                     F_matrix = filt_layer_matrix
                 else: # after that, do matrix addition
@@ -330,7 +339,57 @@ class Conv_Layer (Cnn_Layer):
                     F_matrix = F_matrix + filt_layer_matrix
             F_tensor.append(F_matrix)
         F_tensor_obj = Tensor_3D(F_tensor)
+        return F_tensor_obj
+    def forward_Fs1(self, a0 = None, weight_tensors = None, stride = None, pad = None):
+        if a0 == None:
+            a0 = self.a0
+        if weight_tensors == None:
+            weight_tensors = self.Fs
+        if stride == None:
+            stride = self.stride
+        if pad == None:
+            pad = self.pad
+        F_tensor = []
+        
+        o = a0
+        f = weight_tensors[0]
 
+        o_h, o_w = o.height, o.width
+        f_h, f_w = f.height, f.width
+        output_h = (((o_h + (2 * pad)) - f_h)//stride) + 1
+        output_w = (((o_w + (2 * pad)) - f_w)//stride) + 1
+
+        
+        
+        for i in range(len(weight_tensors)):
+            weight_tensor = weight_tensors[i]
+            print("fs {0}/{1}".format(str(i), str(len(weight_tensors))))
+            assert a0.depth == weight_tensor.depth
+
+            weight_arr = weight_tensor.raw_form()
+            filt = np.array(weight_arr)
+            a0_arr = a0.raw_form()
+            orig = np.array(a0_arr)
+            
+            F_matrix = [[0.0 for _ in range(output_w)]
+                         for _ in range(output_h)]
+
+            for y in range(0, output_h):
+                for x in range(0, output_w):
+                    y1 = y * stride
+                    x1 = x * stride
+                    y2 = y1 + f_h
+                    x2 = x1 + f_w
+                    ix_grid = np.ix_(list(range(0, a0.depth)),
+                                     list(range(y1, y2)),
+                                     list(range(x1, x2)))
+                    submatrix = orig[ix_grid]
+                    F_matrix[y][x] = float(np.sum(submatrix * filt))
+            F_tensor.append(F_matrix)
+        F_tensor_obj = Tensor_3D(F_tensor)
+        assert F_tensor_obj.depth == len(weight_tensors)
+        assert F_tensor_obj.height == output_h
+        assert F_tensor_obj.width == output_w
         return F_tensor_obj
     def forward_Bs(self, tensor):
         # print(tensor)
@@ -359,9 +418,71 @@ class Conv_Layer (Cnn_Layer):
         # self.a1 = curr_tensor
         return curr_tensor # this is going to be a1
     def drv_a0(self):
+        print("entering drv_a0")
         # https://medium.com/@mayank.utexas/backpropagation-for-convolution-with-strides-8137e4fc2710
-        
-        pass
+        nl = self.drv_Bs()[0] # next grad tensor
+        assert type(nl) == Tensor_3D
+        filt_sidelength = (self.Fs[0].height)
+        stride = self.stride
+        Fs = self.Fs
+        assert type(Fs) == list
+        assert type(Fs[0]) == Tensor_3D
+
+        paddilated_nl_tensor_array = []
+
+        for matrix in nl.md:
+            dil_matrix = matrix.dilate(stride - 1)
+            paddil_matrix = dil_matrix.pad(filt_sidelength - 1)
+            paddilated_nl_tensor_array.append(paddil_matrix)
+        paddilated_nl_tensor = Tensor_3D(paddilated_nl_tensor_array)
+        print("done paddilated")
+
+        flipped_weight_tensors = []
+
+        weight_depth = Fs[0].depth
+        for i in range(weight_depth):
+            flipped_weight_tensor = []
+            for j in range(len(Fs)):
+                weight_matrix = Fs[j].md[i]
+                assert type(weight_matrix) == Matrix
+                weight_matrix_flipped = weight_matrix.rotate().rotate()
+                assert type(weight_matrix.vr[0].headc[0]) in [int, float]
+                flipped_weight_tensor.append(weight_matrix_flipped)
+            flipped_weight_tensors.append(Tensor_3D(flipped_weight_tensor))
+
+        assert type(paddilated_nl_tensor) == Tensor_3D
+        assert type(flipped_weight_tensors) == list
+        assert type(flipped_weight_tensors[0]) == Tensor_3D
+        assert type(flipped_weight_tensors[0].md[0].vr[0].headc[0]) in [int, float]
+        try:
+            assert len(flipped_weight_tensors) == self.a0.depth
+            assert (flipped_weight_tensors[0].depth) == self.a1.depth
+        except:
+            print("dimensions not switched")
+            print("filts have amount {0} and depths {1}".format(len(flipped_weight_tensors),
+                                                                flipped_weight_tensors[0].depth))
+        print("done flipping weights")
+        drv_a0_tensor = self.forward_Fs(a0 = paddilated_nl_tensor,
+                                        weight_tensors = flipped_weight_tensors,
+                                        stride = 1,
+                                        pad = 0)
+        try:
+            assert drv_a0_tensor.height == self.a0.height
+            assert drv_a0_tensor.width == self.a0.width
+            assert drv_a0_tensor.depth == self.a0.depth
+        except:
+            print("filt length {0}".format(str(filt_sidelength)))
+            print("stride {0}".format(str(stride)))
+            print("filt size {0}".format(str(flipped_weight_tensors[0].height)))
+            print("orig size {0}".format(str(paddilated_nl_tensor.height)))
+            print("nl orig size {0}".format(str(nl.height)))
+            print("drva0 dimens:")
+            print(drv_a0_tensor.depth, drv_a0_tensor.height, drv_a0_tensor.width)
+            print("self dimens:")
+            print(self.a0.depth, self.a0.height, self.a0.width)
+            raise AssertionError("UNEQUAL")
+        print("done with drv_a0")
+        return drv_a0_tensor
     def drv_Fs(self, stride = None, chrt = None): # chain rule of filters
         # chrt is the next tensor in the chain rule
         if stride == None:
@@ -375,7 +496,7 @@ class Conv_Layer (Cnn_Layer):
             for orig_matrix in self.a0.md:
                 dilated_drv_matrix = drv_matrix.dilate(stride - 1)
                 # dilation for stride
-                filt_matrix = self.filt_matrix(orig_matrix, drv_matrix)
+                filt_matrix = self._filt_matrix(orig_matrix, drv_matrix)
                 drv_tensor.append(filt_matrix)
             drv_tensors.append(Tensor_3D(drv_tensor))
         #print(drv_tensors)
@@ -468,10 +589,12 @@ class Pool_Layer (Cnn_Layer):
         for matrix in self.a0:
             temp_pool_matrix = []
             temp_max_coord_matrix = []
-            for y1 in range(0, len(matrix.vr), self.stride): # height
+            floored_height = len(matrix.vr) - (len(matrix.vr) % self.stride)
+            for y1 in range(0, floored_height, self.stride): # height
                 temp_pool_row = []
-                temp_max_coord_row = []                
-                for x1 in range(0, len(matrix.vr[0]), self.stride):
+                temp_max_coord_row = []
+                floored_width = len(matrix.vr[0]) - (len(matrix.vr[0]) % self.stride)
+                for x1 in range(0, floored_width, self.stride): # 
                     x2 = x1 + self.stride
                     y2 = y1 + self.stride
                     submatrix =  matrix.sector(x1, x2 - 1, y1, y2 - 1)
@@ -598,240 +721,7 @@ class Fully_Connected_Layer (Cnn_Layer):
 
 
 # In[ ]:
-def default_categ_nn(conv_a1):
-    standard = Matrix([[1 + float(np.random.randn()) for _ in range(8)]
-                               for _ in range(2)])
-    Softboi = Categ_NN()
-    l0 = Layer(layer_rank=0,
-               network=Softboi,
-               weights=Matrix([[1, 2, 3, 2, 1, 4, 5, 1],
-                               [1, 5, 2, 3, 2, 8, 6, 7]]),
-               biases=Matrix([[1], [1]]),
-               inputs=conv_a1,
-               activation=SOFTMAX()
-               )
-    a1 = l0.forward()
-    l0.a1 = a1
-    target = Matrix([[0], [1]])
-    ll = Loss(a0=a1, network=Softboi, freq_target=target,
-              loss_function=CROSSENTROPY())
-    l0.next_layer = ll
-    a2 = ll.forward(a1, target)
-    ll.a1 = a2
-    return Softboi
 
-
-I1 = Tensor_3D([
-    [[1, 0, 0, 1, 1],
-     [0, 1, 0, 0, 1],
-     [0, 1, 0, 1, 0],
-     [1, 1, 0, 0, 1],
-     [0, 0, 1, 1, 0]],
-
-    [[1, 1, 1, 0, 1],
-     [0, 1, 0, 1, 0],
-     [0, 1, 0, 1, 0],
-     [1, 0, 1, 0, 1],
-     [1, 0, 1, 0, 1]],
-    
-    [[0, 1, 1, 0, 1],
-     [1, 0, 0, 1, 0],
-     [1, 1, 0, 0, 1],
-     [0, 1, 0, 1, 0],
-     [0, 0, 1, 0, 0]]
-    ])
-F1 = Tensor_3D([
-    [[1, 0],
-     [0, 1]],
-    
-    [[1, 1],
-     [0, 1]],
-
-    [[0, 1],
-     [0, 1]]
-    
-    ])
-F2 = F1.__deepcopy__()
-B1 = Tensor_3D([
-    [[1 for _ in range(4)]
-     for _ in range(4)],
-    
-    [[2 for _ in range(4)]
-     for _ in range(4)]
-     ])
-FL = [F1, F2]
-BL = [B1]
-samp_conv = Conv_nn()
-
-def test_drvs():
-
-    Am = [[[1, 1, 1],
-           [0, 1, 1],
-           [0, 1, 0]]]
-    fm = [[[0, 1],
-           [1, 1]]]
-    bm = [[[0, 0],[0, 0]]]
-    b = Tensor_3D(bm)
-    A = Tensor_3D(Am)
-    f = Tensor_3D(fm)
-    fl = [f]
-    bl = [b]
-    cnn_l0 = Conv_Layer(network = samp_conv,
-                layer_rank = 0,
-                a0 = A,
-                Fs = fl,
-                Bs = bl,
-                stride = 1,
-                pad = 0)
-    def test_Fs_drv():
-        dn = Tensor_3D([[[100, 100], [100, 100]]])
-        dr = Tensor_3D([[[300, 400], [200, 300]]])
-        drp = cnn_l0.drv_Fs(chrt = dn)
-        try:
-            assert drp[0].unwrap() == dr.unwrap()
-        except:
-            print("Error for Drv")
-            print(dr)
-            print("^ true")
-            print(drp)
-            print("^ fake")
-    test_Fs_drv()
-    samp_conv.all_layers.clear()
-    samp_conv.all_parameters.clear()
-test_drvs()
-
-cnn_l0 = Conv_Layer(network = samp_conv,
-                    layer_rank = 0,
-                    a0 = I1,
-                    Fs = FL,
-                    Bs = BL,
-                    stride = 1,
-                    pad = 0)
-l0a1 = cnn_l0.forward()
-cnn_l0.a1 = l0a1
-# print(l0a1)
-"""
-[[[7 4 4 5]
-  [5 3 5 3]
-  [5 4 3 6]
-  [4 6 4 3]]
-
- [[8 5 5 6]
-  [6 4 6 4]
-  [6 5 4 7]
-  [5 7 5 4]]]"""
-cnn_l1 = Pool_Layer(network = samp_conv,
-                    layer_rank = 1,
-                    a0 = l0a1,
-                    stride = 2,
-                    pad = 0)
-cnn_l0.next_layer = cnn_l1
-l1a1 = cnn_l1.forward()
-cnn_l1.a1 = l1a1
-
-# print(l1a1)
-"""
-[[[7 5]
-  [6 6]]
-
- [[8 6]
-  [7 7]]]"""
-
-colvec = (Vector(l1a1.unwrap())).to_matrix()
-softboi = default_categ_nn(colvec)
-
-
-cnn_l2 = Fully_Connected_Layer(network = samp_conv,
-                    layer_rank = 0,
-                    a0 = l1a1,
-                    categ_nn = softboi)
-cnn_l1.next_layer = cnn_l2
-l2a1 = cnn_l2.forward()
-cnn_l1.a1 = l2a1
-
-# print(cnn_l2.categ_nn.final_loss)
-# ln(0.5) is around -0.693....
-"""
-Loss;
-A0-[[0.5]
- [0.5]];
-target-[[0]
- [1]];
-a1-[[-0.        ]
- [-0.69314716]]"""
-
-
-# print(cnn_l2.drv_a0())
-
-
-def test_configuring():
-    J = 1
-
-    NI1 = Tensor_3D([
-        [[J for _ in range(5)]
-         for _ in range(5)]
-    ])
-    t = Matrix([[1], [1]])
-    
-    NF1 = Tensor_3D([
-        [[J for _ in range(2)]
-         for _ in range(2)]
-        for _ in range(3)
-    ])
-    NF2 = NF1.__deepcopy__()
-    NB1 = Tensor_3D([
-        [[J for _ in range(4)]
-         for _ in range(4)],
-        
-        [[J for _ in range(4)]
-         for _ in range(4)]
-         ])
-    NFL = [NF1, NF2]
-    NBL = [NB1]
-    pm = [NFL, NBL]
-    samp_conv.reconfigure_observation(NI1, t)
-    samp_conv.GD3_reconfigure_parameters(pm)
-    samp_conv.GD4_update_reconfigurations()
-    sp = samp_conv.all_parameters
-    []
-    
-
-
-
-    J = 0.5
-
-    NF1 = Tensor_3D([
-        [[J for _ in range(1)]
-         for _ in range(1)]
-        
-    ])
-    NF2 = NF1.__deepcopy__()
-    NB1 = Tensor_3D([
-        [[J for _ in range(4)]
-         for _ in range(4)],
-        
-        [[J for _ in range(4)]
-         for _ in range(4)]
-         ])
-    NFL = [NF1, NF2]
-    NBL = [NB1]
-    pm = [NFL, NBL]    
-    
-    samp_conv.GD3_reconfigure_parameters(pm)
-
-
-
-conv_grad = samp_conv.GD1_create_gradient()
-
-
-# print(cnn_l2.categ_nn.all_layers[0].drv_a())
-# print(cnn_l2.categ_nn.final_loss.drv_loss())
-# print("FC grad")
-# print(cnn_l2.drv_a0())
-# print("pool grad")
-# print(cnn_l1.drv_a0())
-# print("weight grad and bias grad")
-# print(conv_grad)
 
 
 class Conv_Categ_NN_Executor:
@@ -930,56 +820,74 @@ class Conv_Categ_NN_Executor:
         accuracy = (successes / (len(self.test_dataset)))
         return accuracy
 
-    def main_executor(self):
+    def setup_dataset(self):
         self.generate_dataset()
         self.split_dataset()
+
+    def main_executor(self):
+        self.setup_dataset()
         final_parameters, final_categ_parameters = self.batch_gradient_descent()
         accuracy = self.verify_test_dataset(final_parameters, final_categ_parameters)
         return accuracy
 
-dister = DISTRIBUTION_VERIFIER()
+    def MNIST_executor(self, mnist):
+        self.setup_MNIST(mnist)
+        final_parameters, final_categ_parameters = self.batch_gradient_descent()
+        accuracy = self.verify_test_dataset(final_parameters, final_categ_parameters)
+        return accuracy
 
-def conv_categ_test(Softboi):
-    Softboighost = Conv_Categ_NN_Executor(Softboi, None)
-    Softboighost.set_test_verifier_holder(dister)
-    accuracy = Softboighost.main_executor()
-    return accuracy
+    def setup_MNIST(self, mnist):
+        # substitute to both generate_dataset and split_dataset
+        def onehot_encode(trainy_i):
+            # input is int from 0 to 9
+            onehot_list = [0 for _ in range(10)]
+            onehot_list[trainy_i] = 1
+            return Vector(onehot_list).to_matrix()
 
-def categ_test_samples(Softboi):
-    accuracies = []
-    for i in range(1):
-        accuracy = conv_categ_test(Softboi)
-        accuracies.append(accuracy)
-    return accuracies
+        def setup_mnist_image(trainx_i):
+            # input is np array
+            img_arr = trainx_i - 127.5
+            img_arr = img_arr * (1/127.5)
+            return Tensor_3D([img_arr.tolist()])
+        train_list = []
+        test_list = []
+        (trainX, trainy), (testX, testy) = mnist.load_data()
+        for i in range(len(trainy)):
+            trainx_i = trainX[i]
+            trainy_i = trainy[i]
+            target_onehot= onehot_encode(trainy_i)
+            input_tensor = setup_mnist_image(trainx_i)
+            train_observation = Observation(input_tensor, target_onehot)
+            train_list.append(train_observation)
+        for i in range(len(testy)):
+            testx_i = testX[i]
+            testy_i = testy[i]
+            target_onehot= onehot_encode(testy_i)
+            input_tensor = setup_mnist_image(testx_i)
+            test_observation = Observation(input_tensor, target_onehot)
+            test_list.append(test_observation)
+        self.train_dataset = train_list
+        self.test_dataset = test_list
 
-print(categ_test_samples(samp_conv))     
-"""
-[[[[[-0.42473277  1.85546589]
-  [-0.32991202  1.64992066]]
 
- [[-0.51523965  1.71943747]
-  [-1.07951048  1.86438911]]
-
- [[-0.91245353  1.81875649]
-  [-0.81286739  1.19062305]]], [[[-0.21470546  0.98012305]
-  [ 0.39658798  0.72474042]]
-
- [[-0.07496182  0.47590873]
-  [ 0.38194163  1.22436617]]
-
- [[ 0.74255888  1.15155569]
-  [ 0.56740792  0.83635784]]]], [[[[ 0.32132901  0.80585778  0.3774194   0.84662383]
-  [ 0.13301895  0.74231723  0.20993448  0.4156955 ]
-  [ 0.39848602  1.1911776   0.68218998  0.25418276]
-  [ 0.30986441  0.16426872  0.06937123  0.08725479]]
-
- [[ 0.73822319  0.47826556  0.14339521  0.90922879]
-  [ 0.06492481  0.20545684  0.17706532  0.43363061]
-  [ 0.02935408  0.30237383 -0.69966513  0.67805931]
-  [ 0.23881786  0.30238107  0.57106937  0.45413194]]]]]
-"""
 
 # 8/3/2020
 # nearly changed drv_a0 for Layer class in matrix_network_7_25_2020
 # changed the chain rule between pool tensor and FC
 # added the batch/gradient functions and maded them accomodatethe tensor-list format for conv net
+
+
+# 8/4/2020
+# SUCCESS!
+# categ parameters now update during the gradient descent too
+# adding mnist to the exxecutor
+# floored range for pooling
+# remove the entry_type conversions for __sum__() in the tensorable classes of matrix_7_25-2020
+# currerntly stuck at drv_a0 hadamard
+
+# 8/5/2020
+# added the optional stride and pad arguments to _filt_matrix and forward_Fs
+# wrote down drv_a0
+# fixed error in Matrix rotate in matrixed_network_7_25_2020
+
+# Simplifying complexity with np (fixed forward_Fs specifically)
