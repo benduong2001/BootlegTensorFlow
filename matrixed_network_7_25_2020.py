@@ -375,10 +375,15 @@ class Vector:  # STRICTLY FOR MATRIXED_NETWORK PROJECT
         return len(self.headc)
 
     def __sum__(self):
-        entry_type = type(self.headc[0])
-        total = (entry_type)(0)
+        
+
+        total = 0
         for x in self.headc:
-            total = total + (x)
+            try:
+                total = total + x
+            except:
+                print(x)
+                raise TypeError("wrong type")
         return total
 
     def __repr__(self):
@@ -546,8 +551,7 @@ class Matrix:  # NO EQUATIONs,meant for Neural Network Project
         return self
 
     def __sum__(self):
-        entry_type = type(self.vr[0].headc[0])
-        total = (entry_type)(0)
+        total = 0
         for vector in self.vr:
             vector_sum = vector.__sum__()
             total = total + (vector_sum)
@@ -612,12 +616,15 @@ class Matrix:  # NO EQUATIONs,meant for Neural Network Project
 
     def rotate(self):
         # rotate clockwise by 90 degrees
-        arrayed = [[row.headc] for row in self.vr]
-        # assert len(array) == len(array[0])
+        arrayed = [row.headc for row in self.vr]
         width = len(arrayed[0])
-        sideways_array = [[row[i] for row in arrayed][::-1]
-                          for i in range(width)]
+        sideways_array = [[row[i] for row in arrayed][::-1] for i in range(width)]
         return Matrix(sideways_array)
+    def flip(self):
+        arrayed = [row.headc for row in self.vr]
+        np_grid = np.array(arrayed)
+        inversion = np.fliplr(np.flipud(np_grid)).astype(float).tolist()
+        return Matrix(inversion)
 
     def pointer_preserved_change(self, newMatrix):
         assert type(self.vr[0]) == Vector
