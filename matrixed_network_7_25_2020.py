@@ -1393,7 +1393,8 @@ class Categ_NN_Executor:
 
         dataset_len = len(self.dataset)
         split_index = int(dataset_len * 0.8)
-        self.train_dataset = (self.dataset)[:split_index]
+        train_dataset = (self.dataset)[:split_index]
+        self.train_dataset = train_dataset
         self.test_dataset = (self.dataset)[split_index:]
 
     def batch_gradient_descent(self):
@@ -1514,7 +1515,7 @@ def categ_test_samples():
         accuracies.append(accuracy)
     return accuracies
 
-#print(categ_test_samples())
+# print(categ_test_samples())
 
 class LINREG_ENCODER(ENCODER_HOLDER):
     def __init__(self):
