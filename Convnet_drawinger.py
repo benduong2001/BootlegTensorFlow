@@ -18,7 +18,7 @@ def test_convtemp_image(samp_conv):
     samp_conv.reconfigure_observation(temp_input_, temp_target)
     samp_conv.GD4_update_reconfigurations()
 
-    pred_column = samp_conv.all_layers[-1].categ_nn.final_loss.a1
+    pred_column = samp_conv.all_layers[-1].categ_nn.final_loss.a0
     pred_dist = [abs(x) for x in pred_column.unwrap()]
     pred_max_idx = max(range(len(pred_dist)), key=pred_dist.__getitem__)
 
