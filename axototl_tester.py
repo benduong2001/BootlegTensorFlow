@@ -230,10 +230,9 @@ def conv_categ_test(Softboi):
     return accuracy
 
 def categ_test_samples(Softboi):
-    accuracies = []
-    for i in range(1):
-        accuracy = conv_categ_test(Softboi)
-        accuracies.append(accuracy)
-    return accuracies
+    accuracy = conv_categ_test(Softboi)
+    print(accuracy)
+    return accuracy
 
-print(categ_test_samples(samp_conv))  
+(categ_test_samples(samp_conv))  
+
