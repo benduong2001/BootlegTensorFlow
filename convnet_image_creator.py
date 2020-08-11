@@ -110,7 +110,12 @@ def create_stockphotos1(l1, l2, u1, u2):
         new_image = Image.fromarray(new_image_array)
         file_name = r"C:\Users\Benson\Desktop\BootlegTensorFlowFolder\convnet_images\conv1 ({0}).jpg".format(i)
         new_image.save(file_name,  'JPEG')
-
+def create_stockphotos1_underfit(l1, l2, u1, u2):
+    for i in range(1, 21):
+        new_image_array = make_image_0(l1, l2, u1, u2)
+        new_image = Image.fromarray(new_image_array)
+        file_name = r"C:\Users\Benson\Desktop\BootlegTensorFlowFolder\convnet_images\conv1 ({0}).jpg".format(i)
+        new_image.save(file_name,  'JPEG')
 
 # In[8]:
 
@@ -120,5 +125,9 @@ def proper_categories():
 def red_herrings():
     create_stockphotos0(3, 3, 3, 3)
     create_stockphotos1(3, 3, 3, 3)
+def underfit():
+    create_stockphotos0(3, 1.5, .4, .4)
+    create_stockphotos1_underfit(3, 1.5, .4, .4)
+    
 
 proper_categories()
