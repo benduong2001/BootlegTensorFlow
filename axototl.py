@@ -418,7 +418,7 @@ class Conv_Layer (Cnn_Layer):
         # self.a1 = curr_tensor
         return curr_tensor # this is going to be a1
     def drv_a0(self):
-        print("entering drv_a0")
+        # print("entering drv_a0")
         # https://medium.com/@mayank.utexas/backpropagation-for-convolution-with-strides-8137e4fc2710
         nl = self.drv_Bs()[0] # next grad tensor
         assert type(nl) == Tensor_3D
@@ -435,7 +435,7 @@ class Conv_Layer (Cnn_Layer):
             paddil_matrix = dil_matrix.pad(filt_sidelength - 1)
             paddilated_nl_tensor_array.append(paddil_matrix)
         paddilated_nl_tensor = Tensor_3D(paddilated_nl_tensor_array)
-        print("done paddilated")
+        # print("done paddilated")
 
         flipped_weight_tensors = []
 
@@ -461,7 +461,7 @@ class Conv_Layer (Cnn_Layer):
             print("dimensions not switched")
             print("filts have amount {0} and depths {1}".format(len(flipped_weight_tensors),
                                                                 flipped_weight_tensors[0].depth))
-        print("done flipping weights")
+        # print("done flipping weights")
         drv_a0_tensor = self.forward_Fs(a0 = paddilated_nl_tensor,
                                         weight_tensors = flipped_weight_tensors,
                                         stride = 1,
@@ -481,7 +481,7 @@ class Conv_Layer (Cnn_Layer):
             print("self dimens:")
             print(self.a0.depth, self.a0.height, self.a0.width)
             raise AssertionError("UNEQUAL")
-        print("done with drv_a0")
+        # print("done with drv_a0")
         return drv_a0_tensor
     def drv_Fs(self, stride = None, chrt = None): # chain rule of filters
         # chrt is the next tensor in the chain rule
@@ -785,7 +785,7 @@ class Conv_Categ_NN_Executor:
             train_datalist=self.train_dataset,
             num_batches=100)# FOR CATEG
         filts = descended_parameters[0]
-        self._visualize_filts(filts)
+        # self._visualize_filts(filts)
         return descended_parameters, descnded_categ_parameters # FOR CATEG
 
     def verify_test_dataset(self, final_parameters, final_categ_parameters):
@@ -852,14 +852,16 @@ class Conv_Categ_NN_Executor:
         train_list = []
         test_list = []
         (trainX, trainy), (testX, testy) = mnist.load_data()
-        for i in range(len(trainy)):
+        amount_train = 200 # len(trainy)
+        amount_test = 200 # len(testy)
+        for i in range(amount_train):
             trainx_i = trainX[i]
             trainy_i = trainy[i]
             target_onehot= onehot_encode(trainy_i)
             input_tensor = setup_mnist_image(trainx_i)
             train_observation = Observation(input_tensor, target_onehot)
             train_list.append(train_observation)
-        for i in range(len(testy)):
+        for i in range(amount_test):
             testx_i = testX[i]
             testy_i = testy[i]
             target_onehot= onehot_encode(testy_i)
