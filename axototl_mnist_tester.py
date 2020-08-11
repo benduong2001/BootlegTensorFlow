@@ -12,9 +12,9 @@ def Mnist_categ_nn(conv_a1):
     Softboi = Categ_NN()
     l0 = Layer(layer_rank=0,
                network=Softboi,
-               weights=Matrix([[1 for _ in range(1600)]
-                                for _ in range(512)]),
-               biases=Matrix([[1] for _ in range(512)]),
+               weights=Matrix([[1 for _ in range(250)]
+                                for _ in range(50)]),
+               biases=Matrix([[1] for _ in range(50)]),
                inputs=conv_a1,
                activation=SIGMOID()
                )
@@ -24,7 +24,7 @@ def Mnist_categ_nn(conv_a1):
     #"""
     l1 = Layer(layer_rank=1,
                network=Softboi,
-               weights=Matrix([[1 for _ in range(512)]
+               weights=Matrix([[1 for _ in range(50)]
                                 for _ in range(10)]),
                biases=Matrix([[1] for _ in range(10)]),
                inputs=a1,
@@ -49,14 +49,13 @@ FL = [
     Tensor_3D([
     [[1 for _ in range(3)]
       for _ in range(3)]])
-    
-      for _ in range(32)]
+      for _ in range(5)]
 
 BL = [
     Tensor_3D([
     [[1 for _ in range(26)]
       for _ in range(26)]
-      for _ in range(32)])
+      for _ in range(5)])
     ]
 
 samp_conv = Conv_nn()
@@ -76,7 +75,7 @@ cnn_l0.a1 = l0a1
 # B, R and a1 is 26*26*32
 assert l0a1.height == 26
 assert l0a1.width == 26
-assert l0a1.depth == 32
+assert l0a1.depth == 5
 
 cnn_l1 = Pool_Layer(network = samp_conv,
                     layer_rank = 1,
@@ -92,21 +91,21 @@ cnn_l1.a1 = l1a1
 ###############
 assert l1a1.height == 13
 assert l1a1.width == 13
-assert l1a1.depth == 32
+assert l1a1.depth == 5
 
 FL2 = [
     Tensor_3D([
     [[1 for _ in range(3)]
       for _ in range(3)]
-    for _ in range(32)
+    for _ in range(5)
     ])
     
-      for _ in range(64)]
+      for _ in range(10)]
 BL2 = [
     Tensor_3D([
     [[1 for _ in range(11)]
       for _ in range(11)]
-      for _ in range(64)])
+      for _ in range(10)])
     ]
 
 cnn_l2 = Conv_Layer(network = samp_conv,
@@ -127,7 +126,7 @@ print(l2a1.height, l2a1.width, l2a1.depth)
 
 assert l2a1.height == 11
 assert l2a1.width == 11
-assert l2a1.depth == 64
+assert l2a1.depth == 10
 
 cnn_l3 = Pool_Layer(network = samp_conv,
                     layer_rank = 1,
@@ -143,7 +142,7 @@ cnn_l3.a1 = l3a1
 print(l3a1.height, l3a1.width, l3a1.depth)
 assert l3a1.height == 5
 assert l3a1.width == 5
-assert l3a1.depth == 64
+assert l3a1.depth == 10
 
 colvec = (Vector(l1a1.unwrap())).to_matrix()
 softboi = Mnist_categ_nn(colvec)
