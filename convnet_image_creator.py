@@ -31,13 +31,21 @@ def make_image_1(l1, l2, u1, u2):
     j = float
     # l1, l2 = 3, 2
     # u1, u2 = 0.2, 0.2 #desmos domain for bellcurve. closer to 0 on y axis/farther from center = lighter
+    variation_1 = [2, 1, 2] # drawn at center
+    variation_2 = [1, 1, 3] # drawn between left and center
+    variation_3 = [0, 1, 4] # drawn at left
+    variation_4 = variation_2[::-1]
+    variation_5 = variation_3[::-1]
+    variations = [variation_1, variation_2, variation_3, variation_4, variation_5]
+    vi = np.random.choice(list(range(5)), 1)
+    variation = variations[int(vi)]
     image_array = []
     for _ in range(5):
         image_layer = []
         for _ in range(3):
-            rowx1 = list(np.random.uniform(-l1,-l2,2).astype(j))
-            rowx2 = list(np.random.uniform( -u1, u2, 1).astype(j))
-            rowx3 = list(np.random.uniform(l2, l1, 2).astype(j))
+            rowx1 = list(np.random.uniform(-l1,-l2, variation[0]).astype(j))
+            rowx2 = list(np.random.uniform( -u1, u2, variation[1]).astype(j))
+            rowx3 = list(np.random.uniform(l2, l1, variation[2]).astype(j))
             rowx = rowx1 + rowx2 + rowx3
             rowy = list(map(bellcurve,rowx))
             rowy = list(map(discrete, rowy))
