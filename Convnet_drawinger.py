@@ -67,12 +67,12 @@ def set_up_present_labels():
 present_labels = set_up_present_labels()
 
 categ = "1"
-def categ1():
-    global categ 
-    categ = "1" 
-def categ0():
-    global categ
-    categ = "0"
+##def categ1():
+##    global categ 
+##    categ = "1" 
+##def categ0():
+##    global categ
+##    categ = "0"
 
 def start_paint(event):
     canvas.bind('<B1-Motion>', painter)
@@ -136,6 +136,10 @@ def color_opacity(color_hex_str, direction = True):
 def color_update(corners, direction):
     # corner, tuple of 4 ints from 0 to canvas length
     # outputs new color, a hex_string
+    
+
+
+    
     curr_canvas_pixel = present_labels[corners[1]//100][corners[0]//100]
     old_color = curr_canvas_pixel.hex_
     old_rgb = hex_to_rgb(old_color)
@@ -155,33 +159,28 @@ def color_update(corners, direction):
     present_labels[corners[1]//100][corners[0]//100] = Canvas_Pixel(new_color, corners)
     return new_color
 
-def floored_corners_paint(event_x, event_y):
+def floored_corners_paint(eventx, eventy):
+
+    
     global brush_size, compartments, main_width, main_height
 
     compartment_width = main_width // compartments # aka 100, if main_width = 500 and compartments = 5
     compartment_height = main_height // compartments
+
+    event_x = max([0, min([main_width - 1, eventx])]) # to prevent going off camera
+    event_y = max([0, min([main_height - 1, eventy])])
+
+    assert event_y >= 0 and event_y < 500
+    assert event_x >= 0 and event_x < 500
     
     anchor_x0 = ((event_x // brush_size) * compartment_width)
     anchor_y0 = ((event_y // brush_size) * compartment_height)
     anchor_x1 = ((event_x // brush_size) * compartment_width) + compartment_width
     anchor_y1 = ((event_y // brush_size) * compartment_height) + compartment_height
     
+    
     corners = (anchor_x0, anchor_y0, anchor_x1 - 1, anchor_y1 - 1)
     return corners
-def mini_paint(corners):
-    global compartments, main_width, main_height
-
-    compartment_width = main_width // compartments # aka 100, if main_width = 500 and compartments = 5
-    compartment_height = main_height // compartments
-    
-    anchor_x0, anchor_y0, anchor_x1, anchor_y1 = corners
-    mini_x0 = anchor_x0 // compartment_width
-    mini_y0 = anchor_y0 // compartment_height
-    mini_x1 = anchor_x1 // compartment_width
-    mini_y1 = anchor_y1 // compartment_height
-    mini_corners = (mini_x0, mini_y0, mini_x1, mini_y1)
-    # print(mini_corners)
-    return mini_corners
 
 
 def painter(event):
@@ -237,10 +236,10 @@ def save():
     image.save(filename)
 
 
-button1 = Button(text = "1", command = categ1)
-button1.pack()
-button0 = Button(text = "0", command = categ0)
-button0.pack()
+# button1 = Button(text = "1", command = categ1)
+# button1.pack()
+# button0 = Button(text = "0", command = categ0)
+# button0.pack()
 button_tester = Button(text = "Test", command = tester)
 button_tester.pack()
 
