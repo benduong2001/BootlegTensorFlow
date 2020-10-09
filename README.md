@@ -1,8 +1,6 @@
 # BootlegTensorFlow
 
-Very basic and simplified modeler for feed-forward neural networks, built from scratch. Can support convolution neural networks, and possibly support vector machines (but cannot currently support recurrent neural network). The reason was to give a bit more under-the-hood understanding of basic neural networks without tensorflow's blackbox effect.
-
-* You can try out BTF_mn_classification_test_run.py, which will give a sample run of a neural network learning to seperate the 3 clusters (-20< = x <= 0), (0 <= x <= 25), (26 <= x <= 80)
+Very basic and simplified modeler for feed-forward neural networks, built from scratch. Can support convolution neural networks, and possibly support vector machines (but cannot currently support recurrent neural network). The reason was to give a bit more under-the-hood understanding of basic neural networks without its usual blackbox effect, down to the backpropagation of the matrices.
 
 * The convolutional neural network's sample run involves distinguishing between 5x5 drawings of 1 or 0. 
 * You must first run convnet_image_creator.py, which will generate the dataset of images in another folder called convnet_images.
