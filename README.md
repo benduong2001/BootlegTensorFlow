@@ -5,3 +5,5 @@ Very basic and simplified modeler for feed-forward neural networks, built from s
 * The convolutional neural network's sample run involves distinguishing between 5x5 drawings of 1 or 0. 
 * You must first run convnet_image_creator.py, which will generate the dataset of images in another folder called convnet_images.
 * Then, you would run Convnet_drawinger which opens a tkinter 5x5 canvas where you can submit your own drawings of 1 or 0 for the model to test. When you finish drawing 1 or 0, you need to click save first, and then you can click test. The console will guess the number.
+
+![](bootlegCNN_demo_gif.gif)
